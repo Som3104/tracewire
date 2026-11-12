@@ -1,0 +1,511 @@
+{
+  "flow_level": {
+    "signature": {
+      "tp": 3588,
+      "fp": 137,
+      "fn": 177,
+      "tn": 4773,
+      "precision": 0.9632,
+      "recall": 0.953,
+      "f1": 0.9581,
+      "fpr": 0.0279
+    },
+    "random_forest": {
+      "tp": 3713,
+      "fp": 1,
+      "fn": 52,
+      "tn": 4909,
+      "precision": 0.9997,
+      "recall": 0.9862,
+      "f1": 0.9929,
+      "fpr": 0.0002
+    },
+    "isolation_forest": {
+      "tp": 3331,
+      "fp": 55,
+      "fn": 434,
+      "tn": 4855,
+      "precision": 0.9838,
+      "recall": 0.8847,
+      "f1": 0.9316,
+      "fpr": 0.0112
+    }
+  },
+  "per_class": {
+    "signature": {
+      "bruteforce": 1.0,
+      "dns_tunnel": 1.0,
+      "exfil": 1.0,
+      "portscan": 1.0,
+      "stealth_scan": 0.0,
+      "sweep": 1.0,
+      "synflood": 1.0
+    },
+    "random_forest": {
+      "bruteforce": 1.0,
+      "dns_tunnel": 1.0,
+      "exfil": 1.0,
+      "portscan": 1.0,
+      "stealth_scan": 1.0,
+      "sweep": 0.8976,
+      "synflood": 1.0
+    },
+    "isolation_forest": {
+      "bruteforce": 0.0,
+      "dns_tunnel": 0.0,
+      "exfil": 0.0,
+      "portscan": 1.0,
+      "stealth_scan": 1.0,
+      "sweep": 0.9075,
+      "synflood": 0.9965
+    }
+  },
+  "confusion": {
+    "signature": {
+      "rows": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "stealth_scan",
+        "sweep",
+        "synflood"
+      ],
+      "cols": [
+        "benign",
+        "bruteforce",
+        "burst",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "sweep",
+        "synflood"
+      ],
+      "matrix": [
+        [
+          4773,
+          0,
+          137,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          90,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          280,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          10,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          700,
+          0,
+          0
+        ],
+        [
+          177,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          508,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2000
+        ]
+      ]
+    },
+    "random_forest": {
+      "rows": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "stealth_scan",
+        "sweep",
+        "synflood"
+      ],
+      "cols": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "stealth_scan",
+        "sweep",
+        "synflood"
+      ],
+      "matrix": [
+        [
+          4909,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          90,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          280,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          692,
+          8,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          177,
+          0,
+          0
+        ],
+        [
+          52,
+          0,
+          0,
+          0,
+          0,
+          0,
+          456,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2000
+        ]
+      ]
+    },
+    "isolation_forest": {
+      "rows": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "stealth_scan",
+        "sweep",
+        "synflood"
+      ],
+      "cols": [
+        "benign",
+        "anomaly"
+      ],
+      "matrix": [
+        [
+          4855,
+          55
+        ],
+        [
+          90,
+          0
+        ],
+        [
+          280,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          0,
+          700
+        ],
+        [
+          0,
+          177
+        ],
+        [
+          47,
+          461
+        ],
+        [
+          7,
+          1993
+        ]
+      ]
+    }
+  },
+  "episodes": [
+    {
+      "episode_id": "portscan-1",
+      "attack": "portscan",
+      "attacker": "203.0.113.91",
+      "target": "10.10.0.10",
+      "start": 1763021220.0,
+      "end": 1763021235.556,
+      "description": "SYN scan of 700 ports at 45/s",
+      "flows": 700,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.43
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.0
+      },
+      "isolation_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.0
+      }
+    },
+    {
+      "episode_id": "sweep-2",
+      "attack": "sweep",
+      "attacker": "10.10.0.71",
+      "target": "10.10.0.0/24",
+      "start": 1763021440.0,
+      "end": 1763021454.111,
+      "description": "ICMP + TCP/3389 sweep of the /24",
+      "flows": 508,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.78
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 0.8976,
+        "latency_s": 0.12
+      },
+      "isolation_forest": {
+        "detected": true,
+        "coverage": 0.9075,
+        "latency_s": 0.01
+      }
+    },
+    {
+      "episode_id": "synflood-3",
+      "attack": "synflood",
+      "attacker": "198.51.100.0/24 (spoofed)",
+      "target": "10.10.0.10:443",
+      "start": 1763021700.0,
+      "end": 1763021710.0,
+      "description": "2000 spoofed SYNs in 10s",
+      "flows": 2000,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.44
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.01
+      },
+      "isolation_forest": {
+        "detected": true,
+        "coverage": 0.9965,
+        "latency_s": 0.01
+      }
+    },
+    {
+      "episode_id": "bruteforce-4",
+      "attack": "bruteforce",
+      "attacker": "203.0.113.140",
+      "target": "10.10.0.12:22",
+      "start": 1763021950.0,
+      "end": 1763022060.0,
+      "description": "90 short login attempts against port 22",
+      "flows": 90,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 17.76
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.59
+      },
+      "isolation_forest": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      }
+    },
+    {
+      "episode_id": "dns_tunnel-5",
+      "attack": "dns_tunnel",
+      "attacker": "10.10.0.127",
+      "target": "10.10.0.11",
+      "start": 1763022120.0,
+      "end": 1763022290.0,
+      "description": "280 TXT queries with encoded labels under q.cdn-sync-lab.org",
+      "flows": 280,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 5.47
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.01
+      },
+      "isolation_forest": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      }
+    },
+    {
+      "episode_id": "stealth_scan-6",
+      "attack": "stealth_scan",
+      "attacker": "198.51.100.201",
+      "target": "10.10.0.12",
+      "start": 1763020900.0,
+      "end": 1763022500.0,
+      "description": "slow scan, one probe every ~9s (177 probes)",
+      "flows": 177,
+      "signature": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 2.99
+      },
+      "isolation_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 2.99
+      }
+    },
+    {
+      "episode_id": "exfil-7",
+      "attack": "exfil",
+      "attacker": "10.10.0.104",
+      "target": "185.199.111.20:4444",
+      "start": 1763022380.0,
+      "end": 1763022420.0,
+      "description": "10 uploads of ~500 kB to a non-standard port",
+      "flows": 10,
+      "signature": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 4.58
+      },
+      "random_forest": {
+        "detected": true,
+        "coverage": 1.0,
+        "latency_s": 0.58
+      },
+      "isolation_forest": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      }
+    }
+  ],
+  "alert_level": {
+    "alerts": 12,
+    "false_alerts": 3,
+    "alert_precision": 0.75,
+    "false_alert_ids": [
+      "TW-1007-0009",
+      "TW-1007-0011",
+      "TW-1007-0012"
+    ]
+  },
+  "rf_class_accuracy": 0.9841
+}

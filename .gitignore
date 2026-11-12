@@ -1,0 +1,11 @@
+data/*.pcap
+data/*.labels.csv
+data/*.episodes.json
+data/*.flows.csv
+dashboard/node_modules/
+dashboard/dist/
+dashboard/dist-single/
+__pycache__/
+.pytest_cache/
+
+.venv/
