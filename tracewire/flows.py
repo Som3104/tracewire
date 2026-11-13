@@ -34,7 +34,7 @@ def _new_flow(fid, ts, proto, src, sp, dst, dp):
     return dict(flow_id=fid, ts=ts, last=ts, proto=proto, src=src, sport=sp, dst=dst, dport=dp,
                 fwd_pkts=0, bwd_pkts=0, fwd_bytes=0, bwd_bytes=0,
                 syn=0, synack=0, rst_fwd=0, rst_bwd=0, fin=0, psh=0, data_fwd=0, data_bwd=0,
-                closed=False, dns_qname="", dns_qtype="", icmp_type=-1)
+                closed=False, dns_qname="", dns_qtype="", icmp_type=-1, history="")
 
 
 def read_flows(path: str) -> pd.DataFrame:
@@ -104,8 +104,26 @@ def read_flows(path: str) -> pd.DataFrame:
             if flags & F_RST: f["rst_fwd" if fwd else "rst_bwd"] += 1; f["closed"] = True
             if flags & F_FIN: f["fin"] += 1; f["closed"] = f["fin"] >= 2 or f["closed"]
             if flags & F_PSH: f["psh"] += 1
-        elif proto == "icmp" and f["icmp_type"] < 0:
-            f["icmp_type"] = icmp_type
+            # Zeek-style history: uppercase = originator, lowercase = responder
+            ev = []
+            if flags & F_SYN:
+                ev.append("H" if flags & F_ACK else "S")
+            elif flags & F_RST:
+                ev.append("R")
+            else:
+                if payload > 0: ev.append("D")
+                elif flags & F_ACK and not flags & F_FIN: ev.append("A")
+                if flags & F_FIN: ev.append("F")
+            for c in ev:
+                c = c if fwd else c.lower()
+                if c not in f["history"]:
+                    f["history"] += c
+        else:
+            if proto == "icmp" and f["icmp_type"] < 0:
+                f["icmp_type"] = icmp_type
+            c = "D" if fwd else "d"
+            if payload > 0 and c not in f["history"]:
+                f["history"] += c
         if proto == "udp" and 53 in (sp, dp) and fwd and not f["dns_qname"]:
             try:
                 d = DNS(raw[l4 + 8:])
@@ -120,6 +138,7 @@ def read_flows(path: str) -> pd.DataFrame:
     df = pd.DataFrame(done).sort_values("ts").reset_index(drop=True)
     df["duration"] = df["last"] - df["ts"]
     df["conn_state"] = df.apply(_conn_state, axis=1)
+    df = derive_handshake(df)
     df["dns_qlen"] = df["dns_qname"].str.len()
     df["dns_label_max"] = df["dns_qname"].map(lambda q: max((len(x) for x in q.split(".")), default=0) if q else 0)
     df["dns_entropy"] = df["dns_qname"].map(lambda q: shannon(q.split(".")[0]) if q else 0.0)
@@ -127,34 +146,41 @@ def read_flows(path: str) -> pd.DataFrame:
 
 
 def _conn_state(f) -> str:
-    """Zeek-style connection states (subset)."""
+    """Connection state using Zeek's definitions (base/protocols/conn/main.zeek)."""
+    h = f["history"]
     if f["proto"] != "tcp":
         return "SF" if f["bwd_pkts"] else "S0"
-    if f["syn"] and not f["synack"] and not f["bwd_pkts"]:
-        return "S0"                 # SYN, no answer
-    if f["syn"] and not f["synack"] and f["rst_bwd"]:
-        return "REJ"                # SYN answered by RST
-    if f["synack"] and f["rst_fwd"] and f["data_fwd"] == 0:
-        return "RSTOS0"             # half-open then originator RST (SYN-scan to open port)
-    if f["synack"] and f["data_fwd"] == 0 and f["data_bwd"] == 0 and not f["fin"]:
-        return "SH"                 # handshake started, never completed
-    if f["fin"] >= 2:
-        return "SF"
-    if f["rst_fwd"]:
-        return "RSTO"
-    if f["rst_bwd"]:
-        return "RSTR"
-    return "S1"
+    if "S" not in h:
+        return "OTH"                            # midstream, no SYN seen
+    if "h" not in h:                            # responder never sent SYN-ACK
+        if "r" in h: return "REJ"               # attempt rejected
+        if "R" in h: return "RSTOS0"            # SYN then originator RST
+        if "F" in h: return "SH"                # SYN then FIN, half open
+        return "S0"                             # attempt seen, no reply
+    # SYN + SYN-ACK seen: Zeek treats the connection as established
+    if "R" in h: return "RSTO"                  # originator aborted (incl. SYN-scan "ShR")
+    if "r" in h: return "RSTR"                  # responder sent RST
+    if "F" in h and "f" in h: return "SF"       # normal establishment and termination
+    if "F" in h: return "S2"
+    if "f" in h: return "S3"
+    return "S1"                                 # established, not terminated
 
 
-FAILED = {"S0", "REJ", "RSTOS0", "SH"}
+def derive_handshake(df: pd.DataFrame) -> pd.DataFrame:
+    """Flags shared by the native parser and the Zeek adapter, both computed from history.
+    A TCP connection only counts as completed if the originator ACKed the SYN-ACK."""
+    h = df["history"].fillna("")
+    tcp = df["proto"] == "tcp"
+    df["handshake_done"] = tcp & h.str.contains("S") & h.str.contains("h") & h.str.contains("A", regex=False)
+    df["failed"] = (tcp & ~df["handshake_done"]) | (~tcp & (df["bwd_pkts"] == 0))
+    return df
 
 
 def add_context(df: pd.DataFrame) -> pd.DataFrame:
     """Behavioural features computed over a trailing window of earlier flows."""
     ts = df["ts"].to_numpy()
     src, dst = df["src"].to_numpy(), df["dst"].to_numpy()
-    dport, state = df["dport"].to_numpy(), df["conn_state"].to_numpy()
+    dport, failed_col = df["dport"].to_numpy(), df["failed"].to_numpy()
     by_src = defaultdict(deque)        # src -> deque[(ts, dst, dport, failed)]
     by_dsvc = defaultdict(deque)       # (dst,dport) -> deque[(ts, src, failed)]
     out = defaultdict(list)
@@ -176,7 +202,7 @@ def add_context(df: pd.DataFrame) -> pd.DataFrame:
         out["dsvc_conns_10s"].append(len(d))
         out["dsvc_srcs_10s"].append(len({x[1] for x in d}))
         out["dsvc_failed_10s"].append(sum(x[2] for x in d))
-        failed = state[i] in FAILED
+        failed = bool(failed_col[i])
         q.append((t, dst[i], dport[i], failed))
         d.append((t, src[i], failed))
     for k, v in out.items():
@@ -186,9 +212,20 @@ def add_context(df: pd.DataFrame) -> pd.DataFrame:
 
 def attach_labels(df: pd.DataFrame, labels_csv: str) -> pd.DataFrame:
     lab = pd.read_csv(labels_csv)
-    m = {(r.proto, r.src, int(r.sport), r.dst, int(r.dport)): (r.label, r.episode_id if isinstance(r.episode_id, str) else "")
-         for r in lab.itertuples()}
-    keys = list(zip(df.proto, df.src, df.sport.astype(int), df.dst, df.dport.astype(int)))
-    df["label"] = [m.get(k, ("benign", ""))[0] for k in keys]
-    df["episode_id"] = [m.get(k, ("benign", ""))[1] for k in keys]
+    lab["episode_id"] = lab["episode_id"].fillna("")
+    exact = {(r.proto, r.src, int(r.sport), r.dst, int(r.dport)): (r.label, r.episode_id) for r in lab.itertuples()}
+    # Zeek puts ICMP type/code in the port fields, so ICMP also matches on (src, dst) alone
+    icmp = {}
+    for r in lab[lab.proto == "icmp"].itertuples():
+        k = (r.src, r.dst)
+        if k not in icmp or r.label != "benign":
+            icmp[k] = (r.label, r.episode_id)
+    out = []
+    for p, s, sp, d, dp in zip(df.proto, df.src, df.sport.astype(int), df.dst, df.dport.astype(int)):
+        v = exact.get((p, s, sp, d, dp))
+        if v is None and p == "icmp":
+            v = icmp.get((s, d)) or icmp.get((d, s))
+        out.append(v or ("benign", ""))
+    df["label"] = [v[0] for v in out]
+    df["episode_id"] = [v[1] for v in out]
     return df

@@ -21,7 +21,7 @@ from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.preprocessing import StandardScaler
 
 LAB_NET = ipaddress.ip_network("10.10.0.0/24")
-STATES = ["SF", "S0", "REJ", "RSTOS0", "SH", "S1", "RSTO", "RSTR"]
+STATES = ["SF", "S0", "REJ", "RSTO", "RSTOS0", "RSTR", "SH", "S1", "S2", "S3", "OTH"]
 
 FEATURES_BASE = [
     "duration", "fwd_pkts", "bwd_pkts", "fwd_bytes", "bwd_bytes", "syn", "synack",
@@ -40,6 +40,7 @@ def featurize(df: pd.DataFrame) -> pd.DataFrame:
         X[f"proto_{p}"] = (df.proto == p).astype(float)
     for s in STATES:
         X[f"state_{s}"] = (df.conn_state == s).astype(float)
+    X["handshake_done"] = df.handshake_done.astype(float)
     X["dport_wellknown"] = (df.dport < 1024).astype(float)
     X["dport_login"] = df.dport.isin([21, 22, 23, 3389, 5900]).astype(float)
     X["dst_external"] = (~df.dst.map(lambda i: ipaddress.ip_address(i) in LAB_NET)).astype(float)

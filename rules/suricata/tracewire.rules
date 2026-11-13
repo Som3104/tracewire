@@ -6,10 +6,10 @@
 # That is why the vertical-scan and sweep rules here are noisier than the
 # flow-level versions in tracewire/signatures.py (TW-1001 / TW-1002).
 
-alert tcp any any -> $HOME_NET any (msg:"TRACEWIRE Possible SYN port scan"; flow:stateless; flags:S,12; detection_filter:track by_src, count 20, seconds 10; classtype:attempted-recon; sid:9100001; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"TRACEWIRE Possible SYN port scan"; flow:to_server; flags:S,12; detection_filter:track by_src, count 20, seconds 10; classtype:attempted-recon; sid:9100001; rev:1;)
 alert icmp any any -> $HOME_NET any (msg:"TRACEWIRE ICMP echo sweep"; itype:8; detection_filter:track by_src, count 15, seconds 30; classtype:attempted-recon; sid:9100002; rev:1;)
-alert tcp any any -> $HOME_NET [80,443] (msg:"TRACEWIRE SYN flood against web service"; flow:stateless; flags:S,12; threshold:type both, track by_dst, count 100, seconds 5; classtype:attempted-dos; sid:9100003; rev:1;)
-alert tcp any any -> $HOME_NET [21,22,23,3389,5900] (msg:"TRACEWIRE Login brute force (connection rate)"; flow:stateless; flags:S,12; detection_filter:track by_src, count 15, seconds 60; classtype:attempted-user; sid:9100004; rev:1;)
+alert tcp any any -> $HOME_NET [80,443] (msg:"TRACEWIRE SYN flood against web service"; flow:to_server; flags:S,12; threshold:type both, track by_dst, count 100, seconds 5; classtype:attempted-dos; sid:9100003; rev:1;)
+alert tcp any any -> $HOME_NET [21,22,23,3389,5900] (msg:"TRACEWIRE Login brute force (connection rate)"; flow:to_server; flags:S,12; detection_filter:track by_src, count 15, seconds 60; classtype:attempted-user; sid:9100004; rev:1;)
 alert dns any any -> any any (msg:"TRACEWIRE DNS query with base32-like label"; dns.query; pcre:"/(^|\.)[a-z2-7]{30,}\./i"; threshold:type limit, track by_src, count 1, seconds 60; classtype:policy-violation; sid:9100005; rev:1;)
 alert dns any any -> any any (msg:"TRACEWIRE Unusually long DNS query"; dns.query; bsize:>60; threshold:type limit, track by_src, count 1, seconds 60; classtype:policy-violation; sid:9100007; rev:1;)
 alert tcp $HOME_NET any -> $EXTERNAL_NET ![20:25,53,80,110,123,143,443,445,465,587,993,995,3389] (msg:"TRACEWIRE Large upload to non-standard port"; flow:established,to_server; stream_size:client,>,1000000; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; sid:9100006; rev:1;)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { C, EngineMark, int, mmss, bytes } from './util.jsx'
+import { C, ENGINE, EngineMark, int, mmss, bytes } from './util.jsx'
 
 /** Confusion matrix on the faceplate: rows are the true class, columns what the engine said.
  *  Shade = share of the row (single-hue ramp), number = flow count. */
@@ -147,7 +147,8 @@ export function Ledger({ data, pinnedT, node, clearPin, clearNode }) {
       <div className="ledger-tools">
         <div className="keys" role="group" aria-label="Engine">
           {key('all', 'All engines', '#2e9b5f')}
-          {key('signature', 'Signature', C.sig)}
+          {key('signature', 'Tracewire rules', C.sig)}
+          {data.engines.includes('suricata') && key('suricata', 'Suricata', C.sig)}
           {key('ml', 'Random forest', C.ml)}
         </div>
         <button className="key" aria-pressed={fpOnly} style={{ '--led': C.miss }} onClick={() => setFpOnly(!fpOnly)}>
@@ -165,12 +166,13 @@ export function Ledger({ data, pinnedT, node, clearPin, clearNode }) {
             {rows.map((e) => (
               <tr key={e.id} className={pinnedT == null ? '' : inPin(e) ? 'hl' : 'dim'}>
                 <td className="mono">{mmss(e.t)}{e.t_end - e.t > 1 ? <span style={{ color: 'var(--ink-3)' }}> to {mmss(e.t_end)}</span> : null}</td>
-                <td><span className="eng"><EngineMark engine={e.engine === 'signature' ? 'sig' : 'ml'} ink />{e.engine === 'signature' ? e.rule : `RF ${(e.confidence * 100).toFixed(0)}%`}</span></td>
+                <td><span className="eng"><EngineMark engine={e.engine === 'signature' ? 'sig' : e.engine === 'suricata' ? 'sur' : 'ml'} ink />
+                  {e.engine === 'ml' ? `RF ${(e.confidence * 100).toFixed(0)}%` : e.engine === 'suricata' ? `SID ${e.rule}` : e.rule}</span></td>
                 <td><span className="sev" aria-label={`severity ${e.severity} of 4`}>{[1, 2, 3, 4].map((k) => <i key={k} className={k <= e.severity ? 'on' : ''} />)}</span></td>
                 <td>{e.name}</td>
                 <td className="mono">{e.src}</td>
                 <td className="mono">{e.dst}</td>
-                <td className="mono" style={{ textAlign: 'right' }}>{int(e.flows)}</td>
+                <td className="mono" style={{ textAlign: 'right' }}>{int(e.flows)}{e.alerts ? <div style={{ color: 'var(--ink-3)', fontSize: 11 }}>{int(e.alerts)} alerts</div> : null}</td>
                 <td className={`verdict ${e.verdict === 'false positive' ? 'fp' : ''}`}>
                   {e.verdict === 'false positive' ? '✕ false positive' : `✓ ${data.attack_names[e.truth]}`}
                 </td>

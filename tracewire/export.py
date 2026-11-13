@@ -67,9 +67,13 @@ def _nodes(df: pd.DataFrame):
     return node
 
 
-def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_s: int = 10) -> dict:
+def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_s: int = 10,
+          sur_events: list | None = None) -> dict:
     t0 = float(df.ts.min())
     df = df.copy()
+    has_sur = "sur_pred" in df
+    if not has_sur:
+        df["sur_pred"] = "benign"
     df["svc"] = [service(p, d) for p, d in zip(df.proto, df.dport)]
     df["pkts"] = df.fwd_pkts + df.bwd_pkts
     df["bytes"] = df.fwd_bytes + df.bwd_bytes
@@ -83,20 +87,24 @@ def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_
         if b in g.groups:
             x = df.loc[g.groups[b]]
             truth = {k: int(v) for k, v in x.label.value_counts().items() if k != "benign"}
+            # det[class] = [flows of that class, flagged by rules, by forest, by Suricata]
             det = {c: [int(n), int((x.sig_pred[x.label == c] != "benign").sum()),
-                       int((x.rf_pred[x.label == c] != "benign").sum())] for c, n in truth.items()}
+                       int((x.rf_pred[x.label == c] != "benign").sum()),
+                       int((x.sur_pred[x.label == c] != "benign").sum())] for c, n in truth.items()}
             ben = x.label == "benign"
-            fp = [int((x.sig_pred[ben] != "benign").sum()), int((x.rf_pred[ben] != "benign").sum())]
+            fp = [int((x.sig_pred[ben] != "benign").sum()), int((x.rf_pred[ben] != "benign").sum()),
+                  int((x.sur_pred[ben] != "benign").sum())]
             bins.append({"t": b * bin_s, "flows": int(len(x)), "pkts": int(x.pkts.sum()),
                          "bytes": int(x.bytes.sum()),
                          "proto": {k: int(v) for k, v in x.proto.value_counts().items()},
                          "truth": truth, "det": det, "fp": fp,
                          "sig": int((x.sig_pred != "benign").sum()),
                          "rf": int((x.rf_pred != "benign").sum()),
+                         "sur": int((x.sur_pred != "benign").sum()),
                          "iso": int((x.iso_pred != "benign").sum())})
         else:
-            bins.append({"t": b * bin_s, "flows": 0, "pkts": 0, "bytes": 0, "proto": {}, "truth": {}, "det": {}, "fp": [0, 0],
-                         "sig": 0, "rf": 0, "iso": 0})
+            bins.append({"t": b * bin_s, "flows": 0, "pkts": 0, "bytes": 0, "proto": {}, "truth": {}, "det": {}, "fp": [0, 0, 0],
+                         "sig": 0, "rf": 0, "sur": 0, "iso": 0})
 
     # ------------------------------------------------ unified event ledger
     labels = df.set_index("flow_id").label
@@ -138,6 +146,7 @@ def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_
                        "flows": e["flows"], "confidence": round(float(np.mean(e["_conf"])), 3),
                        "truth": max(mal, key=mal.get) if mal else "benign",
                        "verdict": "true positive" if mal else "false positive"})
+    events.extend(sur_events or [])
     events.sort(key=lambda e: e["t"])
     for i, e in enumerate(sorted([e for e in events if e["engine"] == "ml"], key=lambda e: e["t"])):
         e["id"] = f"ML-{i + 1:04d}"
@@ -164,7 +173,8 @@ def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_
                       "services": {k: int(v) for k, v in x.svc.value_counts().head(4).items()},
                       "truth": mal.label.value_counts().index[0] if len(mal) else "benign",
                       "malicious": int(len(mal)),
-                      "sig": int((x.sig_pred != "benign").sum()), "rf": int((x.rf_pred != "benign").sum())})
+                      "sig": int((x.sig_pred != "benign").sum()), "rf": int((x.rf_pred != "benign").sum()),
+                      "sur": int((x.sur_pred != "benign").sum())})
 
     # ------------------------------------------------ services
     services = []
@@ -178,7 +188,8 @@ def build(df: pd.DataFrame, alerts, metrics: dict, importances, meta: dict, bin_
     for e in metrics["episodes"]:
         e = dict(e); e["start"] = round(e["start"] - t0, 2); e["end"] = round(e["end"] - t0, 2); eps.append(e)
 
-    return {"meta": meta, "bin_s": bin_s, "bins": bins, "episodes": eps, "events": events,
+    engines = ["signature"] + (["suricata"] if has_sur else []) + ["random_forest", "isolation_forest"]
+    return {"meta": meta, "engines": engines, "bin_s": bin_s, "bins": bins, "episodes": eps, "events": events,
             "nodes": nodes, "edges": edges, "services": services,
             "metrics": {k: v for k, v in metrics.items() if k != "episodes"},
             "rules": [{"id": r.rule_id, "name": r.name, "attack": r.attack, "severity": r.severity,

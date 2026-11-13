@@ -30,7 +30,7 @@ def summary():
 
 
 @app.get("/api/events")
-def events(engine: str | None = Query(None, pattern="^(signature|ml)$"), min_severity: int = 1):
+def events(engine: str | None = Query(None, pattern="^(signature|suricata|ml)$"), min_severity: int = 1):
     return [e for e in doc()["events"] if (engine is None or e["engine"] == engine) and e["severity"] >= min_severity]
 
 
@@ -40,8 +40,14 @@ def timeline():
     t0 = d["meta"]["start"]
     # Grafana wants absolute epoch-ms timestamps
     return [{"time": int((t0 + b["t"]) * 1000), "flows": b["flows"], "packets": b["pkts"],
-             "signature_hits": b["sig"], "ml_hits": b["rf"], "malicious_truth": sum(b["truth"].values())}
+             "signature_hits": b["sig"], "suricata_hits": b.get("sur", 0), "ml_hits": b["rf"],
+             "malicious_truth": sum(b["truth"].values())}
             for b in d["bins"]]
+
+
+@app.get("/api/scores")
+def scores():
+    return [{"engine": k, **v} for k, v in doc()["metrics"]["flow_level"].items()]
 
 
 @app.get("/api/episodes")

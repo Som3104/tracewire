@@ -10,25 +10,35 @@
       "f1": 0.9581,
       "fpr": 0.0279
     },
+    "suricata": {
+      "tp": 1203,
+      "fp": 0,
+      "fn": 2562,
+      "tn": 4910,
+      "precision": 1.0,
+      "recall": 0.3195,
+      "f1": 0.4843,
+      "fpr": 0.0
+    },
     "random_forest": {
-      "tp": 3713,
+      "tp": 3714,
       "fp": 1,
-      "fn": 52,
+      "fn": 51,
       "tn": 4909,
       "precision": 0.9997,
-      "recall": 0.9862,
-      "f1": 0.9929,
+      "recall": 0.9865,
+      "f1": 0.993,
       "fpr": 0.0002
     },
     "isolation_forest": {
-      "tp": 3331,
-      "fp": 55,
-      "fn": 434,
-      "tn": 4855,
-      "precision": 0.9838,
-      "recall": 0.8847,
-      "f1": 0.9316,
-      "fpr": 0.0112
+      "tp": 3273,
+      "fp": 60,
+      "fn": 492,
+      "tn": 4850,
+      "precision": 0.982,
+      "recall": 0.8693,
+      "f1": 0.9222,
+      "fpr": 0.01222
     }
   },
   "per_class": {
@@ -41,13 +51,22 @@
       "sweep": 1.0,
       "synflood": 1.0
     },
+    "suricata": {
+      "bruteforce": 0.6667,
+      "dns_tunnel": 0.0107,
+      "exfil": 0.0,
+      "portscan": 0.9429,
+      "stealth_scan": 0.0,
+      "sweep": 0.9409,
+      "synflood": 0.001
+    },
     "random_forest": {
       "bruteforce": 1.0,
       "dns_tunnel": 1.0,
       "exfil": 1.0,
       "portscan": 1.0,
       "stealth_scan": 1.0,
-      "sweep": 0.8976,
+      "sweep": 0.8996,
       "synflood": 1.0
     },
     "isolation_forest": {
@@ -57,7 +76,7 @@
       "portscan": 1.0,
       "stealth_scan": 1.0,
       "sweep": 0.9075,
-      "synflood": 0.9965
+      "synflood": 0.9675
     }
   },
   "confusion": {
@@ -165,6 +184,92 @@
         ]
       ]
     },
+    "suricata": {
+      "rows": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "exfil",
+        "portscan",
+        "stealth_scan",
+        "sweep",
+        "synflood"
+      ],
+      "cols": [
+        "benign",
+        "bruteforce",
+        "dns_tunnel",
+        "portscan",
+        "sweep",
+        "synflood"
+      ],
+      "matrix": [
+        [
+          4910,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          30,
+          60,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          277,
+          0,
+          3,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          40,
+          0,
+          0,
+          660,
+          0,
+          0
+        ],
+        [
+          177,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          30,
+          239,
+          0,
+          0,
+          239,
+          0
+        ],
+        [
+          1998,
+          0,
+          0,
+          0,
+          0,
+          2
+        ]
+      ]
+    },
     "random_forest": {
       "rows": [
         "benign",
@@ -248,13 +353,13 @@
           0
         ],
         [
-          52,
+          51,
           0,
           0,
           0,
           0,
           0,
-          456,
+          457,
           0
         ],
         [
@@ -286,8 +391,8 @@
       ],
       "matrix": [
         [
-          4855,
-          55
+          4850,
+          60
         ],
         [
           90,
@@ -314,8 +419,8 @@
           461
         ],
         [
-          7,
-          1993
+          65,
+          1935
         ]
       ]
     }
@@ -334,6 +439,11 @@
         "detected": true,
         "coverage": 1.0,
         "latency_s": 0.43
+      },
+      "suricata": {
+        "detected": true,
+        "coverage": 0.9429,
+        "latency_s": 0.44
       },
       "random_forest": {
         "detected": true,
@@ -360,9 +470,14 @@
         "coverage": 1.0,
         "latency_s": 0.78
       },
+      "suricata": {
+        "detected": true,
+        "coverage": 0.9409,
+        "latency_s": 0.79
+      },
       "random_forest": {
         "detected": true,
-        "coverage": 0.8976,
+        "coverage": 0.8996,
         "latency_s": 0.12
       },
       "isolation_forest": {
@@ -385,6 +500,11 @@
         "coverage": 1.0,
         "latency_s": 0.44
       },
+      "suricata": {
+        "detected": true,
+        "coverage": 0.001,
+        "latency_s": 0.75
+      },
       "random_forest": {
         "detected": true,
         "coverage": 1.0,
@@ -392,8 +512,8 @@
       },
       "isolation_forest": {
         "detected": true,
-        "coverage": 0.9965,
-        "latency_s": 0.01
+        "coverage": 0.9675,
+        "latency_s": 0.02
       }
     },
     {
@@ -409,6 +529,11 @@
         "detected": true,
         "coverage": 1.0,
         "latency_s": 17.76
+      },
+      "suricata": {
+        "detected": true,
+        "coverage": 0.6667,
+        "latency_s": 18.5
       },
       "random_forest": {
         "detected": true,
@@ -435,6 +560,11 @@
         "coverage": 1.0,
         "latency_s": 5.47
       },
+      "suricata": {
+        "detected": true,
+        "coverage": 0.0107,
+        "latency_s": 0.0
+      },
       "random_forest": {
         "detected": true,
         "coverage": 1.0,
@@ -456,6 +586,11 @@
       "description": "slow scan, one probe every ~9s (177 probes)",
       "flows": 177,
       "signature": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      },
+      "suricata": {
         "detected": false,
         "coverage": 0.0,
         "latency_s": null
@@ -485,6 +620,11 @@
         "coverage": 1.0,
         "latency_s": 4.58
       },
+      "suricata": {
+        "detected": false,
+        "coverage": 0.0,
+        "latency_s": null
+      },
       "random_forest": {
         "detected": true,
         "coverage": 1.0,
@@ -507,5 +647,12 @@
       "TW-1007-0012"
     ]
   },
-  "rf_class_accuracy": 0.9841
+  "rf_class_accuracy": 0.9843,
+  "alert_level_suricata": {
+    "alerts": 12,
+    "raw_alerts": 1420,
+    "false_alerts": 0,
+    "alert_precision": 1.0,
+    "false_alert_ids": []
+  }
 }

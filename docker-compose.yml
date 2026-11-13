@@ -1,0 +1,88 @@
+# Tracewire stack
+#
+#   docker compose --profile sensors run --rm suricata   # Suricata on day2.pcap  -> out/suricata/eve.json
+#   docker compose --profile sensors run --rm zeek       # Zeek on both captures  -> out/zeek/day1, out/zeek/day2
+#   python run_pipeline.py                               # (on your machine) detect, evaluate, export
+#   docker compose up -d                                 # Postgres + loader + API + Grafana
+#
+# Grafana: http://localhost:3000  (admin / admin)    API: http://localhost:8000/docs
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tracewire
+      POSTGRES_PASSWORD: tracewire
+      POSTGRES_DB: tracewire
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracewire -d tracewire"]
+      interval: 3s
+      retries: 20
+    ports: ["5432:5432"]
+
+  loader:                      # one-shot: copies pipeline results into Postgres
+    build: .
+    volumes: [".:/app"]
+    command: ["python", "-m", "tracewire.store", "--dsn", "postgresql://tracewire:tracewire@db:5432/tracewire", "--wait", "60"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: .
+    volumes: [".:/app"]
+    command: ["uvicorn", "api.server:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["8000:8000"]
+
+  grafana:
+    image: grafana/grafana-oss:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/tracewire.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on:
+      loader: { condition: service_completed_successfully }
+
+  # ---- sensors: run on demand with --profile sensors ------------------------
+  suricata:
+    image: jasonish/suricata:7.0
+    profiles: ["sensors"]
+    entrypoint: ["suricata"]
+    command:
+      - "-r"
+      - "/pcaps/day2.pcap"
+      - "-S"
+      - "/rules/tracewire.rules"
+      - "-l"
+      - "/out"
+      - "-k"
+      - "none"
+      - "--set"
+      - "vars.address-groups.HOME_NET=[10.10.0.0/24]"
+      - "--set"
+      - "vars.address-groups.EXTERNAL_NET=!$$HOME_NET"
+    volumes:
+      - ./data:/pcaps:ro
+      - ./rules/suricata:/rules:ro
+      - ./out/suricata:/out
+
+  zeek:
+    image: zeek/zeek:latest
+    profiles: ["sensors"]
+    entrypoint: ["sh", "-c"]
+    command:
+      - >
+        mkdir -p /out/day1 /out/day2 &&
+        cd /out/day1 && zeek -C -r /pcaps/day1.pcap /rules/tracewire.zeek &&
+        cd /out/day2 && zeek -C -r /pcaps/day2.pcap /rules/tracewire.zeek &&
+        echo "zeek logs written to out/zeek/day1 and out/zeek/day2"
+    volumes:
+      - ./data:/pcaps:ro
+      - ./rules/zeek:/rules:ro
+      - ./out/zeek:/out

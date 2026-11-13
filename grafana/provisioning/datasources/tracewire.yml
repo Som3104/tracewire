@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: Tracewire DB
+    type: postgres
+    uid: tracewire-db
+    access: proxy
+    url: db:5432
+    user: tracewire
+    isDefault: true
+    jsonData:
+      database: tracewire
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    secureJsonData:
+      password: tracewire

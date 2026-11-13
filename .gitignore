@@ -1,3 +1,5 @@
+.venv/
+venv/
 data/*.pcap
 data/*.labels.csv
 data/*.episodes.json
@@ -7,5 +9,4 @@ dashboard/dist/
 dashboard/dist-single/
 __pycache__/
 .pytest_cache/
-
-.venv/
+out/

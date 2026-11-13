@@ -21,6 +21,10 @@ event zeek_init()
                       $epoch=scan_window,
                       $reducers=set(r1),
                       $threshold=scan_ports_threshold,
+                      # Without an epoch_result callback, SumStats' do_finish_epoch() returns
+                      # early: counts are never reset and the next epoch is never scheduled,
+                      # so the "10 s" window silently becomes the whole capture.
+                      $epoch_result(ts: time, key: SumStats::Key, result: SumStats::Result) = { },
                       $threshold_val(key: SumStats::Key, result: SumStats::Result) =
                           { return result["tw.scan"]$unique + 0.0; },
                       $threshold_crossed(key: SumStats::Key, result: SumStats::Result) =
@@ -32,15 +36,22 @@ event zeek_init()
                           }]);
     }
 
-# failed or half-open TCP connections are scan evidence (states S0, REJ, RSTOS0, SH)
-event connection_state_remove(c: connection)
+# Scan evidence = a TCP connection whose handshake never completed (no originator ACK).
+# Observe it when the failure happens: connection_state_remove fires only when Zeek
+# expires the connection, in delayed batches, which would break the 10 s window and
+# make a slow scan look fast.
+function observe_failed(c: connection)
     {
-    if ( ! c?$conn || c$conn$proto != tcp ) return;
-    if ( c$conn$conn_state !in set("S0", "REJ", "RSTOS0", "SH") ) return;
+    if ( get_port_transport_proto(c$id$resp_p) != tcp ) return;
+    if ( c?$history && /A/ in c$history ) return;
     SumStats::observe("tw.scan",
                       [$str=fmt("%s->%s", c$id$orig_h, c$id$resp_h)],
                       [$num=port_to_count(c$id$resp_p)]);
     }
+
+event connection_rejected(c: connection) { observe_failed(c); }   # SYN answered by RST ("Sr")
+event connection_attempt(c: connection)  { observe_failed(c); }   # SYN never answered ("S")
+event connection_reset(c: connection)    { observe_failed(c); }   # SYN-ACK then scanner RST ("ShR")
 
 event dns_request(c: connection, msg: dns_msg, query: string, qtype: count, qclass: count)
     {

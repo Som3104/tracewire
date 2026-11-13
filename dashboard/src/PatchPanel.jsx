@@ -5,16 +5,17 @@ import { C, int, bytes, useWidth } from './util.jsx'
  *  one cable per pair. Cable color shows how the malicious traffic on it was handled. */
 const STATUS = {
   benign: { color: '#4b646b', label: 'Benign only' },
-  both: { color: C.phos, label: 'Caught by both engines' },
-  sig: { color: C.sig, label: 'Caught by signatures only' },
+  both: { color: C.phos, label: 'Caught by rules and ML' },
+  sig: { color: C.sig, label: 'Caught by rules only' },
   ml: { color: C.ml, label: 'Caught by ML only' },
   missed: { color: C.miss, label: 'Missed by both' },
 }
 
 function status(e) {
   if (!e.malicious) return 'benign'
-  if (e.sig && e.rf) return 'both'
-  if (e.sig) return 'sig'
+  const rules = e.sig || e.sur
+  if (rules && e.rf) return 'both'
+  if (rules) return 'sig'
   if (e.rf) return 'ml'
   return 'missed'
 }
@@ -92,7 +93,7 @@ export default function PatchPanel({ data, node, setNode }) {
             <span className="mono">{int(hover.e.flows)} flows, {bytes(hover.e.bytes)}</span><br />
             {Object.entries(hover.e.services).map(([k, v]) => `${k} ${v}`).join(', ')}<br />
             {hover.e.malicious
-              ? <>{int(hover.e.malicious)} malicious ({data.attack_names[hover.e.truth]}); signature flagged {int(hover.e.sig)}, ML flagged {int(hover.e.rf)}</>
+              ? <>{int(hover.e.malicious)} malicious ({data.attack_names[hover.e.truth]}); Tracewire rules flagged {int(hover.e.sig)}, Suricata {int(hover.e.sur || 0)}, ML {int(hover.e.rf)}</>
               : 'No attack traffic on this link'}
           </div>
         )}

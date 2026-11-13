@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ATTACKS, C, mmss, int, pct, useWidth } from './util.jsx'
+import { useMemo, useState } from 'react'
+import { ATTACKS, C, ENGINE, EngineMark, mmss, int, pct, useWidth } from './util.jsx'
 
 /**
  * Logic-analyzer view of the capture.
@@ -11,6 +11,10 @@ import { ATTACKS, C, mmss, int, pct, useWidth } from './util.jsx'
  */
 export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
   const [ref, width] = useWidth()
+  const hasSur = data.engines.includes('suricata')
+  const [rules, setRules] = useState('signature')          // which rule engine fills the amber lane
+  const RE = ENGINE[rules]
+  const hollow = rules === 'suricata'
   const W = Math.max(width, 980)
   const L = 158, R = 104
   const plotW = W - L - R
@@ -36,7 +40,7 @@ export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
 
   const per = data.metrics.per_class
   const names = data.attack_names
-  const fpTotals = bins.reduce((a, b) => [a[0] + b.fp[0], a[1] + b.fp[1]], [0, 0])
+  const fpTotals = bins.reduce((a, b) => [a[0] + (b.fp[RE.fp] || 0), a[1] + b.fp[1]], [0, 0])
   const benignFlows = data.metrics.confusion.signature.matrix[0].reduce((a, b) => a + b, 0)
 
   function onMove(e) {
@@ -64,12 +68,21 @@ export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
             <div className="cell"><div className="lbl">Packets</div><div className="val">{int(b.pkts)}</div></div>
             <div className="cell"><div className="lbl">Flows</div><div className="val">{int(b.flows)}</div></div>
             <div className="cell"><div className="lbl">Attack traffic present</div><div className="val">{Object.keys(b.truth).length ? Object.entries(b.truth).map(([k, v]) => `${names[k]} ${v}`).join(', ') : 'none'}</div></div>
-            <div className="cell"><div className="lbl">Signature flagged</div><div className="val sig">{int(b.sig)} flows</div></div>
+            <div className="cell"><div className="lbl">{RE.name} flagged</div><div className="val sig">{int(rules === 'suricata' ? b.sur : b.sig)} flows</div></div>
             <div className="cell"><div className="lbl">ML flagged</div><div className="val ml">{int(b.rf)} flows</div></div>
             {pinned != null && <button className="key pin" onClick={() => setPinned(null)}>Unpin</button>}
           </>
         ) : (
           <div className="hint">Hover the trace to read a 10-second slice. Click to pin it and filter the event ledger; arrow keys step through time.</div>
+        )}
+        {hasSur && (
+          <div className="keys lane-pick" role="group" aria-label="Rule engine shown above the trace">
+            {['signature', 'suricata'].map((k) => (
+              <button key={k} className="key" aria-pressed={rules === k} style={{ '--led': C.sig }} onClick={() => setRules(k)}>
+                <EngineMark engine={ENGINE[k].mark} size={9} />{ENGINE[k].name}
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <div className="well-scroll" ref={ref}>
@@ -115,13 +128,13 @@ export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
                 <g className="num" fontSize="12.5">
                   {fa ? (
                     <>
-                      <text x={W - R + 12} y={y0 + 17} fill={C.sig}>S {int(fpTotals[0])}</text>
-                      <text x={W - R + 12} y={y0 + 33} fill={C.ml}>M {int(fpTotals[1])}</text>
+                      <text x={W - R + 12} y={y0 + 17} fill={C.sig}>{RE.short} {int(fpTotals[0])}</text>
+                      <text x={W - R + 12} y={y0 + 33} fill={C.ml}>RF {int(fpTotals[1])}</text>
                     </>
                   ) : (
                     <>
-                      <text x={W - R + 12} y={y0 + 17} fill={per.signature[c] === 0 ? C.miss : C.sig}>S {pct(per.signature[c], 0)}</text>
-                      <text x={W - R + 12} y={y0 + 33} fill={per.random_forest[c] === 0 ? C.miss : C.ml}>M {pct(per.random_forest[c], 0)}</text>
+                      <text x={W - R + 12} y={y0 + 17} fill={per[rules][c] === 0 ? C.miss : C.sig}>{RE.short} {pct(per[rules][c], 0)}</text>
+                      <text x={W - R + 12} y={y0 + 33} fill={per.random_forest[c] === 0 ? C.miss : C.ml}>RF {pct(per.random_forest[c], 0)}</text>
                     </>
                   )}
                 </g>
@@ -143,7 +156,7 @@ export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
                     <line x1={L} x2={W - R} y1={(hi + lo) / 2} y2={(hi + lo) / 2} stroke={C.phos3} strokeDasharray="2 3" />
                     {bins.map((b, i) => (
                       <g key={i}>
-                        {b.fp[0] > 0 && <rect x={x(i) + bw * 0.1} y={(hi + lo) / 2 - 1 - lg(b.fp[0])} width={Math.max(bw * 0.8, 2)} height={lg(b.fp[0])} fill={C.sig} rx="1" />}
+                        {b.fp[RE.fp] > 0 && <rect x={x(i) + bw * 0.1 + (hollow ? 0.6 : 0)} y={(hi + lo) / 2 - 1 - lg(b.fp[RE.fp])} width={Math.max(bw * 0.8, 2) - (hollow ? 1.2 : 0)} height={lg(b.fp[RE.fp])} fill={hollow ? 'none' : C.sig} stroke={hollow ? C.sig : 'none'} strokeWidth="1.2" rx="1" />}
                         {b.fp[1] > 0 && <rect x={x(i) + bw * 0.1} y={(hi + lo) / 2 + 1} width={Math.max(bw * 0.8, 2)} height={lg(b.fp[1])} fill={C.ml} rx="1" />}
                       </g>
                     ))}
@@ -162,11 +175,11 @@ export default function Analyzer({ data, probe, setProbe, pinned, setPinned }) {
                   {bins.map((b, i) => {
                     const dt = b.det[c]
                     if (!dt) return null
-                    const [tot, s, m] = dt
+                    const tot = dt[0], s = dt[RE.idx] || 0, m = dt[2]
                     const w = Math.max(bw * 0.8, 2)
                     return (
                       <g key={i}>
-                        {s > 0 && <rect x={x(i) + bw * 0.1} y={y0 + 2} width={w} height={Math.max(3, 8 * s / tot)} fill={C.sig} rx="1" />}
+                        {s > 0 && <rect x={x(i) + bw * 0.1 + (hollow ? 0.6 : 0)} y={y0 + 2.6} width={w - (hollow ? 1.2 : 0)} height={Math.max(3, 8 * s / tot)} fill={hollow ? 'none' : C.sig} stroke={hollow ? C.sig : 'none'} strokeWidth="1.2" rx="1" />}
                         {m > 0 && <rect x={x(i) + bw * 0.1} y={y0 + ROW - 2 - Math.max(3, 8 * m / tot)} width={w} height={Math.max(3, 8 * m / tot)} fill={C.ml} rx="1" />}
                         {s === 0 && m === 0 && <rect x={x(i) + bw * 0.1} y={hi - 1} width={w} height={lo - hi + 2} fill={C.miss} opacity=".85" rx="1" />}
                       </g>

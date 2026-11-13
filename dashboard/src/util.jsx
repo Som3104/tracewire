@@ -33,10 +33,19 @@ export function useWidth(initial = 900) {
   return [ref, w]
 }
 
-/** Small engine marker: amber square = signature, cyan circle = ML. Shape + color, never color alone. */
+/** Engine markers. Hue = engine family (amber rules, cyan ML); fill/shape = which engine.
+ *  Tracewire rules: filled square. Suricata: outlined square. Random forest: filled circle. Isolation forest: outlined triangle. */
+export const ENGINE = {
+  signature: { mark: 'sig', name: 'Tracewire rules', short: 'TW', idx: 1, fp: 0 },
+  suricata: { mark: 'sur', name: 'Suricata', short: 'SU', idx: 3, fp: 2 },
+  random_forest: { mark: 'ml', name: 'Random forest', short: 'RF', idx: 2, fp: 1 },
+  isolation_forest: { mark: 'iso', name: 'Isolation forest', short: 'IF' },
+}
 export function EngineMark({ engine, size = 10, ink = false }) {
   if (engine === 'signature' || engine === 'sig')
     return <svg width={size} height={size} aria-hidden><rect x="0.5" y="0.5" width={size - 1} height={size - 1} fill={ink ? C.sigInk : C.sig} /></svg>
+  if (engine === 'sur' || engine === 'suricata')
+    return <svg width={size} height={size} aria-hidden><rect x="1" y="1" width={size - 2} height={size - 2} fill="none" stroke={ink ? C.sigInk : C.sig} strokeWidth="1.8" /></svg>
   if (engine === 'iso')
     return <svg width={size} height={size} aria-hidden><polygon points={`${size / 2},0.5 ${size - 0.5},${size - 0.5} 0.5,${size - 0.5}`} fill="none" stroke={ink ? C.mlInk : C.ml} strokeWidth="1.5" /></svg>
   return <svg width={size} height={size} aria-hidden><circle cx={size / 2} cy={size / 2} r={size / 2 - 0.5} fill={ink ? C.mlInk : C.ml} /></svg>

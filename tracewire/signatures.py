@@ -17,7 +17,6 @@ from typing import Callable
 import pandas as pd
 
 LAB_NET = ipaddress.ip_network("10.10.0.0/24")
-FAILED = {"S0", "REJ", "RSTOS0", "SH"}
 STD_PORTS = {20, 21, 22, 25, 53, 80, 110, 123, 143, 443, 445, 465, 587, 993, 995, 3389, 5432}
 
 
@@ -42,16 +41,16 @@ class Rule:
 
 RULES = [
     Rule("TW-1001", "Vertical port scan", "portscan", 3,
-         "≥ 20 distinct ports on one host, failed handshakes, within 10 s",
-         lambda d: (d.proto == "tcp") & d.conn_state.isin(FAILED),
+         "≥ 20 distinct ports on one host, handshake never completed, within 10 s",
+         lambda d: (d.proto == "tcp") & d.failed,
          ("src", "dst"), 10, "nunique:dport", 20),
     Rule("TW-1002", "Horizontal host sweep", "sweep", 3,
          "≥ 15 distinct hosts on one port (or ICMP echo), within 30 s",
-         lambda d: ((d.proto == "tcp") & d.conn_state.isin(FAILED)) | ((d.proto == "icmp") & (d.icmp_type == 8)),
+         lambda d: ((d.proto == "tcp") & d.failed) | ((d.proto == "icmp") & (d.icmp_type == 8)),
          ("src", "proto", "dport"), 30, "nunique:dst", 15),
     Rule("TW-1003", "SYN flood", "synflood", 4,
          "≥ 100 half-open connections to one service within 5 s",
-         lambda d: (d.proto == "tcp") & d.conn_state.isin({"S0", "SH"}),
+         lambda d: (d.proto == "tcp") & d.failed & d.conn_state.isin(["S0", "S1"]),   # no reply, or SYN-ACK never ACKed
          ("dst", "dport"), 5, "count", 100),
     Rule("TW-1004", "Login brute force", "bruteforce", 3,
          "≥ 15 short sessions to a login port (21/22/23/3389/5900) within 60 s",

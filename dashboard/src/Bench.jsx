@@ -1,13 +1,12 @@
-import { C, EngineMark, int, pct } from './util.jsx'
+import { C, ENGINE, EngineMark, int, pct } from './util.jsx'
 
-const ENGINES = [
-  { key: 'signature', mark: 'sig', name: 'Signature rules', color: C.sig,
-    sub: '7 threshold rules over flows; no training, every alert explainable' },
-  { key: 'random_forest', mark: 'ml', name: 'Random forest', color: C.ml,
-    sub: 'Supervised, 300 trees, trained on the day-1 capture' },
-  { key: 'isolation_forest', mark: 'iso', name: 'Isolation forest', color: C.ml,
-    sub: 'Unsupervised, fitted on day-1 benign traffic only' },
-]
+const INFO = {
+  signature: { color: C.sig, sub: '7 flow-level threshold rules; no training, every alert explainable' },
+  suricata: { color: C.sig, sub: 'Suricata 7 packet rules; alerts mapped back to flows' },
+  random_forest: { color: C.ml, sub: 'Supervised, 300 trees, trained on the day-1 capture' },
+  isolation_forest: { color: C.ml, sub: 'Unsupervised, fitted on day-1 benign traffic only' },
+}
+const enginesOf = (data) => data.engines.map((k) => ({ key: k, ...ENGINE[k], ...INFO[k] }))
 
 function Meter({ label, value, display, color, invert }) {
   // FPR: a short bar is good, so scale it against 5% instead of 100%
@@ -22,10 +21,11 @@ function Meter({ label, value, display, color, invert }) {
 
 export default function Bench({ data }) {
   const m = data.metrics
+  const engines = enginesOf(data)
   return (
     <div className="well">
-      <div className="bench">
-        {ENGINES.map((e) => {
+      <div className="bench" style={{ '--n': engines.length }}>
+        {engines.map((e) => {
           const f = m.flow_level[e.key]
           return (
             <div className="engine" key={e.key}>
@@ -48,6 +48,7 @@ export default function Bench({ data }) {
 
 export function Episodes({ data }) {
   const names = data.attack_names
+  const engines = enginesOf(data)
   const cell = (d) => d.detected
     ? <><span>{d.latency_s < 0.05 ? '< 0.1' : d.latency_s.toFixed(1)} s</span><div className="cov">{pct(d.coverage, 0)} of flows</div></>
     : <span className="missed">✕ missed</span>
@@ -58,9 +59,7 @@ export function Episodes({ data }) {
         <thead>
           <tr>
             <th>Attack episode</th>
-            <th><span className="eng"><EngineMark engine="sig" /> Signature</span></th>
-            <th><span className="eng"><EngineMark engine="ml" /> Forest</span></th>
-            <th><span className="eng"><EngineMark engine="iso" /> Isolation</span></th>
+            {engines.map((e) => <th key={e.key}><span className="eng"><EngineMark engine={e.mark} />{e.name}</span></th>)}
           </tr>
         </thead>
         <tbody>
@@ -70,9 +69,7 @@ export function Episodes({ data }) {
                 {names[e.attack]}
                 <div className="who">{e.attacker} to {e.target}</div>
               </td>
-              <td className="num">{cell(e.signature)}</td>
-              <td className="num">{cell(e.random_forest)}</td>
-              <td className="num">{cell(e.isolation_forest)}</td>
+              {engines.map((g) => <td key={g.key} className="num">{cell(e[g.key])}</td>)}
             </tr>
           ))}
         </tbody>
